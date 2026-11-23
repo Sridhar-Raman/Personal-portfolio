@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from "react"
 import "./App.css"
 import TechIcon from "./components/TechIcons"
-import { initScrollMotion } from "./lib/motion"
 
 const EMAIL = "sridharraman2018@gmail.com"
 const currentYear = new Date().getFullYear()
@@ -78,7 +77,7 @@ function Loader({ done, onFinish }: { done: boolean; onFinish: () => void }) {
       finished.current = true
       clearTimeout(timer)
       setPct(100)
-      window.setTimeout(onFinish, 450)
+      window.setTimeout(onFinish, 250)
     }
     const tick = () => {
       if (line >= LOADER_LINES.length) return finish()
@@ -93,16 +92,16 @@ function Loader({ done, onFinish }: { done: boolean; onFinish: () => void }) {
         return next
       })
       setPct(Math.round((count / total) * 100))
-      let delay = li === FAST_LINE ? 14 + Math.random() * 26 : 45 + Math.random() * 70
+      let delay = li === FAST_LINE ? 5 + Math.random() * 9 : 26 + Math.random() * 30
       if (col >= text.length) {
         line += 1
         col = 0
-        delay = 380
+        delay = 180
         if (line < LOADER_LINES.length) setTyped((prev) => [...prev, ""])
-      } else if (/[,.]/.test(text[col - 1])) delay += li === FAST_LINE ? 60 : 140
+      } else if (/[,.]/.test(text[col - 1])) delay += li === FAST_LINE ? 30 : 70
       timer = window.setTimeout(tick, delay)
     }
-    timer = window.setTimeout(tick, 500)
+    timer = window.setTimeout(tick, 250)
     const skip = () => finish()
     window.addEventListener("keydown", skip)
     window.addEventListener("pointerdown", skip)
@@ -140,7 +139,10 @@ function Loader({ done, onFinish }: { done: boolean; onFinish: () => void }) {
 function Header({ active }: { active: string }) {
   return (
     <header className="header">
-      <a className="brand" href="#home">SRIDHAR R</a>
+      <a className="brand" href="#home">
+        <img className="brand-icon" src="/favicon.svg" alt="" width="28" height="28" />
+        SRIDHAR R
+      </a>
       <nav className="nav">
         {navItems.map((n) => (
           <a key={n.id} href={`#${n.id}`} className={active === n.id ? "active" : ""}>
@@ -163,7 +165,8 @@ function HeroParticles() {
     if (!ctx) return
     let w = 0, h = 0, raf = 0
     const mouse = { x: -999, y: -999 }
-    const pts = Array.from({ length: 1400 }, () => ({
+    let visible = true
+    const pts = Array.from({ length: 380 }, () => ({
       x: Math.random(), y: Math.random(), ox: 0, oy: 0, r: Math.random() * 1.3 + 0.3, a: Math.random() * 0.8 + 0.2,
     }))
     const resize = () => {
@@ -177,22 +180,28 @@ function HeroParticles() {
       mouse.y = e.clientY - r.top
     }
     const draw = () => {
-      ctx.clearRect(0, 0, w, h)
-      for (const p of pts) {
-        let x = p.x * w + p.ox, y = p.y * h + p.oy
-        const dx = x - mouse.x, dy = y - mouse.y, d = Math.hypot(dx, dy)
-        if (d < 90) { p.ox += (dx / d) * 3; p.oy += (dy / d) * 3 }
-        p.ox *= 0.92; p.oy *= 0.92
-        x = p.x * w + p.ox; y = p.y * h + p.oy
-        ctx.fillStyle = `rgba(255,255,255,${p.a})`
-        ctx.fillRect(x, y, p.r, p.r)
+      if (visible && !document.hidden) {
+        ctx.clearRect(0, 0, w, h)
+        ctx.fillStyle = "#fff"
+        for (const p of pts) {
+          let x = p.x * w + p.ox, y = p.y * h + p.oy
+          const dx = x - mouse.x, dy = y - mouse.y, d = Math.hypot(dx, dy)
+          if (d < 90) { p.ox += (dx / d) * 3; p.oy += (dy / d) * 3 }
+          p.ox *= 0.92; p.oy *= 0.92
+          x = p.x * w + p.ox; y = p.y * h + p.oy
+          ctx.globalAlpha = p.a
+          ctx.fillRect(x, y, p.r, p.r)
+        }
       }
       raf = requestAnimationFrame(draw)
     }
+    const io = new IntersectionObserver(([e]) => { visible = e.isIntersecting })
+    io.observe(canvas)
     draw()
     window.addEventListener("resize", resize)
-    window.addEventListener("mousemove", move)
+    window.addEventListener("mousemove", move, { passive: true })
     return () => {
+      io.disconnect()
       cancelAnimationFrame(raf)
       window.removeEventListener("resize", resize)
       window.removeEventListener("mousemove", move)
@@ -213,7 +222,7 @@ function Hero() {
   return (
     <section id="home" className="hero" ref={ref} onMouseMove={onMove}>
       <div className="hero-photo">
-        <img src="/about.webp" alt="Sridhar" />
+        <img src="/about-1600.webp" alt="Sridhar" width="1600" height="791" fetchPriority="high" decoding="async" />
       </div>
       <HeroParticles />
       <h1 className="hero-title" aria-label="Sridhar R">
@@ -393,6 +402,32 @@ function Services() {
   )
 }
 
+/* ---------- Live preview that only loads when it is near the viewport ---------- */
+function LazyPreview({ src, title }: { src: string; title: string }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const [show, setShow] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) {
+          setShow(true)
+          io.disconnect()
+        }
+      },
+      { rootMargin: "150px" }
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+  return (
+    <span ref={ref} className="preview-box">
+      {show && <iframe src={src} title={title} loading="lazy" tabIndex={-1} sandbox="allow-scripts allow-same-origin" />}
+    </span>
+  )
+}
+
 /* ---------- Projects ---------- */
 function Projects() {
   return (
@@ -403,7 +438,7 @@ function Projects() {
         {projects.map((p, i) => (
           <article className={`project ${i % 2 ? "flip" : ""} reveal`} key={p.title}>
             <a className="project-shot" href={p.live} target="_blank" rel="noreferrer" aria-label={`Open ${p.title}`}>
-              <iframe src={p.live} title={`${p.title} landing page`} loading="lazy" tabIndex={-1} sandbox="allow-scripts allow-same-origin" />
+              <LazyPreview src={p.live} title={`${p.title} landing page`} />
             </a>
             <div className="project-copy">
               <p className="tag">{p.tag}</p>
@@ -766,8 +801,17 @@ export default function App() {
   const finishLoader = useCallback(() => setLoaded(true), [])
 
   useEffect(() => {
-    if (!siteRef.current) return
-    return initScrollMotion(siteRef.current)
+    const el = siteRef.current
+    if (!el) return
+    let cleanup = () => {}
+    let cancelled = false
+    import("./lib/motion").then((m) => {
+      if (!cancelled) cleanup = m.initScrollMotion(el)
+    })
+    return () => {
+      cancelled = true
+      cleanup()
+    }
   }, [])
 
   useEffect(() => {

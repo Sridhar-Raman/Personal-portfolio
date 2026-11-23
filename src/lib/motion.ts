@@ -26,11 +26,10 @@ export function initScrollMotion(root: HTMLElement): () => void {
     gsap.utils.toArray<HTMLElement>(".reveal").forEach((el) => {
       gsap.fromTo(
         el,
-        { opacity: 0, y: 50, filter: "blur(6px)" },
+        { opacity: 0, y: 50 },
         {
           opacity: 1,
           y: 0,
-          filter: "blur(0px)",
           duration: 0.9,
           ease: "power3.out",
           scrollTrigger: { trigger: el, start: "top 90%", toggleActions: "play none none none" },
